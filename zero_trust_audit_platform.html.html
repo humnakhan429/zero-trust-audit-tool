@@ -1,0 +1,1022 @@
+
+<h2 class="sr-only">Zero Trust Process Audit Tool — interactive dashboard with asset discovery, control validation, attack path mapping, maturity scoring, and behavioral anomaly detection across multi-cloud environments.</h2>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --zt-bg:#0a0e1a;--zt-surface:#111827;--zt-card:#161f35;--zt-border:#1e2d4a;
+  --zt-accent:#00d4ff;--zt-green:#00e5a0;--zt-red:#ff4560;--zt-amber:#ffb020;
+  --zt-purple:#a78bfa;--zt-text:#e2e8f0;--zt-muted:#64748b;--zt-dim:#1a2540;
+}
+body{background:var(--zt-bg);color:var(--zt-text);font-family:'IBM Plex Mono',monospace;font-size:13px;min-height:100vh}
+.app{display:flex;flex-direction:column;min-height:100vh}
+.topbar{background:var(--zt-surface);border-bottom:1px solid var(--zt-border);padding:0 20px;display:flex;align-items:center;gap:16px;height:52px;flex-shrink:0}
+.logo{display:flex;align-items:center;gap:8px;color:var(--zt-accent);font-weight:700;font-size:14px;letter-spacing:2px;text-transform:uppercase}
+.logo-icon{width:28px;height:28px;border:1.5px solid var(--zt-accent);border-radius:50%;display:flex;align-items:center;justify-content:center;position:relative}
+.logo-icon::before{content:'';position:absolute;width:10px;height:10px;background:var(--zt-accent);border-radius:50%;opacity:.3}
+.logo-icon::after{content:'';position:absolute;width:4px;height:4px;background:var(--zt-accent);border-radius:50%}
+.status-bar{display:flex;align-items:center;gap:12px;margin-left:auto}
+.status-dot{width:6px;height:6px;border-radius:50%;background:var(--zt-green);box-shadow:0 0 6px var(--zt-green);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.status-text{font-size:11px;color:var(--zt-muted)}
+.cloud-badges{display:flex;gap:6px}
+.cloud-badge{font-size:10px;padding:2px 8px;border-radius:3px;border:1px solid var(--zt-border);color:var(--zt-muted);letter-spacing:1px}
+.cloud-badge.active{border-color:var(--zt-accent);color:var(--zt-accent)}
+.nav{display:flex;gap:2px;padding:0 20px;background:var(--zt-surface);border-bottom:1px solid var(--zt-border);overflow-x:auto}
+.nav-btn{padding:10px 14px;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--zt-muted);background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap;font-family:inherit;transition:color .2s}
+.nav-btn:hover{color:var(--zt-text)}
+.nav-btn.active{color:var(--zt-accent);border-bottom-color:var(--zt-accent)}
+.main{flex:1;padding:20px;display:flex;flex-direction:column;gap:16px;overflow-y:auto}
+.panel{display:none;flex-direction:column;gap:16px}
+.panel.active{display:flex}
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px}
+.kpi{background:var(--zt-card);border:1px solid var(--zt-border);border-radius:8px;padding:14px;position:relative;overflow:hidden}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.kpi.blue::before{background:var(--zt-accent)}
+.kpi.green::before{background:var(--zt-green)}
+.kpi.red::before{background:var(--zt-red)}
+.kpi.amber::before{background:var(--zt-amber)}
+.kpi.purple::before{background:var(--zt-purple)}
+.kpi-label{font-size:10px;color:var(--zt-muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px}
+.kpi-val{font-size:26px;font-weight:700;letter-spacing:-1px}
+.kpi-sub{font-size:10px;color:var(--zt-muted);margin-top:4px}
+.kpi-trend{font-size:10px;margin-top:4px}
+.kpi-trend.up{color:var(--zt-green)}
+.kpi-trend.down{color:var(--zt-red)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.row3{display:grid;grid-template-columns:2fr 1fr;gap:16px}
+.card{background:var(--zt-card);border:1px solid var(--zt-border);border-radius:8px;padding:16px}
+.card-title{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--zt-muted);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.card-title .badge{font-size:9px;padding:2px 6px;border-radius:3px;background:var(--zt-dim);color:var(--zt-accent)}
+.asset-grid{display:flex;flex-direction:column;gap:6px}
+.asset-row{display:flex;align-items:center;gap:10px;padding:8px;background:var(--zt-dim);border-radius:5px;border:1px solid transparent;cursor:pointer;transition:border-color .2s}
+.asset-row:hover{border-color:var(--zt-border)}
+.asset-icon{width:28px;height:28px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0}
+.asset-info{flex:1;min-width:0}
+.asset-name{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.asset-meta{font-size:10px;color:var(--zt-muted)}
+.risk-pill{font-size:9px;padding:2px 8px;border-radius:10px;font-weight:600;letter-spacing:.5px;flex-shrink:0}
+.risk-critical{background:rgba(255,69,96,.15);color:var(--zt-red);border:1px solid rgba(255,69,96,.3)}
+.risk-high{background:rgba(255,176,32,.12);color:var(--zt-amber);border:1px solid rgba(255,176,32,.3)}
+.risk-medium{background:rgba(0,212,255,.1);color:var(--zt-accent);border:1px solid rgba(0,212,255,.25)}
+.risk-low{background:rgba(0,229,160,.1);color:var(--zt-green);border:1px solid rgba(0,229,160,.25)}
+.control-list{display:flex;flex-direction:column;gap:6px}
+.control-item{display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--zt-dim);border-radius:5px;border-left:3px solid transparent}
+.control-item.pass{border-left-color:var(--zt-green)}
+.control-item.fail{border-left-color:var(--zt-red)}
+.control-item.warn{border-left-color:var(--zt-amber)}
+.control-item.partial{border-left-color:var(--zt-purple)}
+.control-name{flex:1;font-size:12px}
+.control-status{font-size:10px;font-weight:600;letter-spacing:.5px}
+.status-pass{color:var(--zt-green)}
+.status-fail{color:var(--zt-red)}
+.status-warn{color:var(--zt-amber)}
+.status-partial{color:var(--zt-purple)}
+.control-cloud{font-size:10px;color:var(--zt-muted);min-width:40px;text-align:right}
+.maturity-section{display:flex;flex-direction:column;gap:10px}
+.maturity-item{display:flex;flex-direction:column;gap:5px}
+.maturity-header{display:flex;justify-content:space-between;align-items:center}
+.maturity-label{font-size:11px;color:var(--zt-text)}
+.maturity-score{font-size:11px;font-weight:600}
+.maturity-bar{height:6px;background:var(--zt-dim);border-radius:3px;overflow:hidden}
+.maturity-fill{height:100%;border-radius:3px;transition:width 1s ease}
+.score-ring{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px}
+.ring-wrap{position:relative;width:110px;height:110px}
+.ring-wrap svg{width:110px;height:110px;transform:rotate(-90deg)}
+.ring-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center}
+.ring-num{font-size:28px;font-weight:700;color:var(--zt-accent);line-height:1}
+.ring-sub{font-size:9px;color:var(--zt-muted);margin-top:2px;letter-spacing:1px}
+.anomaly-feed{display:flex;flex-direction:column;gap:6px;max-height:280px;overflow-y:auto}
+.anomaly-item{display:flex;gap:10px;padding:9px 12px;background:var(--zt-dim);border-radius:5px;border-left:3px solid}
+.anomaly-item.critical{border-left-color:var(--zt-red)}
+.anomaly-item.high{border-left-color:var(--zt-amber)}
+.anomaly-item.medium{border-left-color:var(--zt-purple)}
+.anomaly-body{flex:1}
+.anomaly-title{font-size:12px;margin-bottom:2px}
+.anomaly-detail{font-size:10px;color:var(--zt-muted)}
+.anomaly-time{font-size:10px;color:var(--zt-muted);flex-shrink:0}
+.path-map{position:relative;padding:16px}
+.path-svg{width:100%;overflow:visible}
+.trust-node{cursor:pointer}
+.trust-node rect{transition:opacity .2s}
+.trust-node:hover rect{opacity:.8}
+.cloud-tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.cloud-tab{padding:5px 12px;font-size:10px;letter-spacing:1px;text-transform:uppercase;border:1px solid var(--zt-border);border-radius:4px;cursor:pointer;color:var(--zt-muted);background:var(--zt-dim);font-family:inherit;transition:all .2s}
+.cloud-tab.active{border-color:var(--zt-accent);color:var(--zt-accent);background:rgba(0,212,255,.08)}
+.policy-table{width:100%;border-collapse:collapse;font-size:11px}
+.policy-table th{text-align:left;padding:6px 10px;color:var(--zt-muted);font-weight:400;border-bottom:1px solid var(--zt-border);letter-spacing:.5px}
+.policy-table td{padding:7px 10px;border-bottom:1px solid rgba(30,45,74,.5)}
+.policy-table tr:last-child td{border-bottom:none}
+.policy-table tr:hover td{background:var(--zt-dim)}
+.action-btn{padding:5px 12px;font-size:10px;letter-spacing:1px;background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.3);color:var(--zt-accent);border-radius:4px;cursor:pointer;font-family:inherit;transition:all .2s}
+.action-btn:hover{background:rgba(0,212,255,.15)}
+.action-btn.danger{background:rgba(255,69,96,.08);border-color:rgba(255,69,96,.3);color:var(--zt-red)}
+.scan-btn{padding:8px 20px;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;background:rgba(0,212,255,.1);border:1px solid var(--zt-accent);color:var(--zt-accent);border-radius:5px;cursor:pointer;font-family:inherit;transition:all .2s;display:flex;align-items:center;gap:8px}
+.scan-btn:hover{background:rgba(0,212,255,.2)}
+.progress-mini{height:3px;background:var(--zt-dim);border-radius:2px;overflow:hidden}
+.progress-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--zt-accent),var(--zt-green));animation:scan 2s ease-in-out infinite alternate}
+@keyframes scan{0%{width:0%}100%{width:85%}}
+.timeline-item{display:flex;gap:12px;padding-bottom:12px;position:relative}
+.timeline-item::before{content:'';position:absolute;left:15px;top:28px;bottom:0;width:1px;background:var(--zt-border)}
+.timeline-item:last-child::before{display:none}
+.tl-dot{width:30px;height:30px;border-radius:50%;border:1px solid var(--zt-border);background:var(--zt-dim);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px}
+.tl-body{flex:1;padding-top:6px}
+.tl-title{font-size:12px;margin-bottom:2px}
+.tl-meta{font-size:10px;color:var(--zt-muted)}
+.remediation-item{display:flex;gap:12px;padding:10px;background:var(--zt-dim);border-radius:6px;margin-bottom:6px}
+.rem-priority{width:24px;height:24px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0}
+.rem-body{flex:1}
+.rem-title{font-size:12px;margin-bottom:3px}
+.rem-meta{font-size:10px;color:var(--zt-muted)}
+.rem-actions{display:flex;gap:6px;margin-top:6px}
+.mini-chart-wrap{height:60px;position:relative}
+.sparkline{width:100%;height:60px}
+.live-counter{font-family:'IBM Plex Mono',monospace;color:var(--zt-accent)}
+.tag{display:inline-block;font-size:9px;padding:1px 6px;border-radius:3px;background:var(--zt-dim);border:1px solid var(--zt-border);color:var(--zt-muted);margin:1px}
+.scrollbar::-webkit-scrollbar{width:4px}
+.scrollbar::-webkit-scrollbar-track{background:var(--zt-dim)}
+.scrollbar::-webkit-scrollbar-thumb{background:var(--zt-border);border-radius:2px}
+</style>
+
+<div class="app">
+<div class="topbar">
+  <div class="logo">
+    <div class="logo-icon"></div>
+    ZeroScan
+  </div>
+  <div style="font-size:10px;color:var(--zt-muted);letter-spacing:1px">ZERO TRUST AUDIT PLATFORM v2.4</div>
+  <div class="status-bar">
+    <div class="cloud-badges">
+      <div class="cloud-badge active">AWS</div>
+      <div class="cloud-badge active">Azure</div>
+      <div class="cloud-badge active">GCP</div>
+      <div class="cloud-badge">OCI</div>
+    </div>
+    <div class="status-dot"></div>
+    <div class="status-text">CONTINUOUS SCAN ACTIVE</div>
+    <button class="scan-btn" onclick="triggerScan()">
+      <span id="scan-label">⟳ RUN SCAN</span>
+    </button>
+  </div>
+</div>
+
+<div class="nav">
+  <button class="nav-btn active" onclick="showPanel('overview',this)">Overview</button>
+  <button class="nav-btn" onclick="showPanel('assets',this)">Asset Inventory</button>
+  <button class="nav-btn" onclick="showPanel('controls',this)">Control Validation</button>
+  <button class="nav-btn" onclick="showPanel('paths',this)">Attack Paths</button>
+  <button class="nav-btn" onclick="showPanel('maturity',this)">Maturity Score</button>
+  <button class="nav-btn" onclick="showPanel('anomalies',this)">Behavioral Anomalies</button>
+  <button class="nav-btn" onclick="showPanel('policies',this)">Policy Engine</button>
+  <button class="nav-btn" onclick="showPanel('remediation',this)">Remediation</button>
+  <button class="nav-btn" onclick="showPanel('audit',this)">Audit Log</button>
+</div>
+
+<div class="main">
+
+<!-- OVERVIEW PANEL -->
+<div id="panel-overview" class="panel active">
+  <div class="kpi-row">
+    <div class="kpi blue">
+      <div class="kpi-label">Total Assets</div>
+      <div class="kpi-val live-counter" id="kpi-assets">4,219</div>
+      <div class="kpi-sub">Across 3 clouds</div>
+      <div class="kpi-trend up">↑ +47 since last scan</div>
+    </div>
+    <div class="kpi green">
+      <div class="kpi-label">Controls Passing</div>
+      <div class="kpi-val" style="color:var(--zt-green)">87.3%</div>
+      <div class="kpi-sub">1,204 / 1,379 checks</div>
+      <div class="kpi-trend up">↑ +2.1% this week</div>
+    </div>
+    <div class="kpi red">
+      <div class="kpi-label">Critical Findings</div>
+      <div class="kpi-val" style="color:var(--zt-red)">23</div>
+      <div class="kpi-sub">Requires immediate action</div>
+      <div class="kpi-trend down">↓ -5 from yesterday</div>
+    </div>
+    <div class="kpi amber">
+      <div class="kpi-label">Attack Paths</div>
+      <div class="kpi-val" style="color:var(--zt-amber)">8</div>
+      <div class="kpi-sub">Exploitable chains</div>
+      <div class="kpi-trend down">↑ +2 new paths</div>
+    </div>
+    <div class="kpi purple">
+      <div class="kpi-label">Maturity Score</div>
+      <div class="kpi-val" style="color:var(--zt-purple)">68</div>
+      <div class="kpi-sub">Level 3 — Defined</div>
+      <div class="kpi-trend up">↑ +4 pts this month</div>
+    </div>
+  </div>
+
+  <div class="row3">
+    <div class="card">
+      <div class="card-title">Trust Posture Overview <span class="badge">LIVE</span></div>
+      <canvas id="overviewChart" role="img" aria-label="Stacked area chart showing trust posture over time across asset categories">Trust posture trend data across identity, network, data, workload, and device categories over 30 days.</canvas>
+    </div>
+    <div class="card">
+      <div class="card-title">Risk Distribution</div>
+      <canvas id="riskDonut" role="img" aria-label="Donut chart of risk distribution: 23 critical, 89 high, 234 medium, 511 low">Risk levels: Critical 23, High 89, Medium 234, Low 511.</canvas>
+    </div>
+  </div>
+
+  <div class="row2">
+    <div class="card">
+      <div class="card-title">Recent Anomalies <span class="badge">3 NEW</span></div>
+      <div class="anomaly-feed scrollbar" style="max-height:200px">
+        <div class="anomaly-item critical">
+          <div class="anomaly-body">
+            <div class="anomaly-title">Impossible travel: admin@corp.com</div>
+            <div class="anomaly-detail">Login from NYC then SG within 4 min — Identity anomaly</div>
+          </div>
+          <div class="anomaly-time">2m ago</div>
+        </div>
+        <div class="anomaly-item high">
+          <div class="anomaly-body">
+            <div class="anomaly-title">Privilege escalation attempt</div>
+            <div class="anomaly-detail">svc-deploy tried to assume AdminRole — AWS us-east-1</div>
+          </div>
+          <div class="anomaly-time">11m ago</div>
+        </div>
+        <div class="anomaly-item medium">
+          <div class="anomaly-body">
+            <div class="anomaly-title">Unusual API call volume</div>
+            <div class="anomaly-detail">Lambda fn:data-processor 8× normal rate — GCP</div>
+          </div>
+          <div class="anomaly-time">34m ago</div>
+        </div>
+        <div class="anomaly-item high">
+          <div class="anomaly-body">
+            <div class="anomaly-title">Lateral movement pattern detected</div>
+            <div class="anomaly-detail">3 internal east-west hops from compromised workload</div>
+          </div>
+          <div class="anomaly-time">1h ago</div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">ZT Pillar Coverage</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px"><span>Identity</span><span style="color:var(--zt-green)">92%</span></div>
+          <div class="maturity-bar"><div class="maturity-fill" style="width:92%;background:var(--zt-green)"></div></div>
+        </div>
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px"><span>Network</span><span style="color:var(--zt-accent)">78%</span></div>
+          <div class="maturity-bar"><div class="maturity-fill" style="width:78%;background:var(--zt-accent)"></div></div>
+        </div>
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px"><span>Data</span><span style="color:var(--zt-amber)">61%</span></div>
+          <div class="maturity-bar"><div class="maturity-fill" style="width:61%;background:var(--zt-amber)"></div></div>
+        </div>
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px"><span>Workload</span><span style="color:var(--zt-purple)">74%</span></div>
+          <div class="maturity-bar"><div class="maturity-fill" style="width:74%;background:var(--zt-purple)"></div></div>
+        </div>
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px"><span>Device</span><span style="color:var(--zt-red)">55%</span></div>
+          <div class="maturity-bar"><div class="maturity-fill" style="width:55%;background:var(--zt-red)"></div></div>
+        </div>
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px"><span>Visibility</span><span style="color:var(--zt-green)">83%</span></div>
+          <div class="maturity-bar"><div class="maturity-fill" style="width:83%;background:var(--zt-green)"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ASSET INVENTORY PANEL -->
+<div id="panel-assets" class="panel">
+  <div class="kpi-row">
+    <div class="kpi blue"><div class="kpi-label">Compute</div><div class="kpi-val">1,847</div><div class="kpi-sub">VMs, containers, functions</div></div>
+    <div class="kpi green"><div class="kpi-label">Network</div><div class="kpi-val">612</div><div class="kpi-sub">VPCs, subnets, gateways</div></div>
+    <div class="kpi amber"><div class="kpi-label">Data Stores</div><div class="kpi-val">389</div><div class="kpi-sub">DBs, buckets, queues</div></div>
+    <div class="kpi purple"><div class="kpi-label">Identities</div><div class="kpi-val">1,204</div><div class="kpi-sub">Users, SAs, roles</div></div>
+    <div class="kpi red"><div class="kpi-label">Unmanaged</div><div class="kpi-val">167</div><div class="kpi-sub">Shadow IT discovered</div></div>
+  </div>
+  <div class="row2">
+    <div class="card">
+      <div class="card-title">Asset Discovery Feed <span class="badge">CONTINUOUS</span></div>
+      <div class="cloud-tabs">
+        <button class="cloud-tab active" onclick="filterCloud(this,'all')">All Clouds</button>
+        <button class="cloud-tab" onclick="filterCloud(this,'aws')">AWS</button>
+        <button class="cloud-tab" onclick="filterCloud(this,'azure')">Azure</button>
+        <button class="cloud-tab" onclick="filterCloud(this,'gcp')">GCP</button>
+      </div>
+      <div class="asset-grid" id="asset-list">
+        <div class="asset-row" data-cloud="aws">
+          <div class="asset-icon" style="background:rgba(255,176,32,.15);color:var(--zt-amber)">EC2</div>
+          <div class="asset-info"><div class="asset-name">prod-webserver-04</div><div class="asset-meta">AWS us-east-1 · t3.xlarge · Running</div></div>
+          <div class="risk-pill risk-critical">CRITICAL</div>
+        </div>
+        <div class="asset-row" data-cloud="azure">
+          <div class="asset-icon" style="background:rgba(0,212,255,.1);color:var(--zt-accent)">VM</div>
+          <div class="asset-info"><div class="asset-name">az-db-primary-001</div><div class="asset-meta">Azure eastus · Standard_D4s · Running</div></div>
+          <div class="risk-pill risk-high">HIGH</div>
+        </div>
+        <div class="asset-row" data-cloud="gcp">
+          <div class="asset-icon" style="background:rgba(0,229,160,.1);color:var(--zt-green)">GKE</div>
+          <div class="asset-info"><div class="asset-name">gke-prod-cluster-main</div><div class="asset-meta">GCP us-central1 · 24 nodes · Active</div></div>
+          <div class="risk-pill risk-medium">MEDIUM</div>
+        </div>
+        <div class="asset-row" data-cloud="aws">
+          <div class="asset-icon" style="background:rgba(167,139,250,.15);color:var(--zt-purple)">S3</div>
+          <div class="asset-info"><div class="asset-name">corp-data-lake-prod</div><div class="asset-meta">AWS us-east-1 · 4.2 TB · Public ACL ⚠</div></div>
+          <div class="risk-pill risk-critical">CRITICAL</div>
+        </div>
+        <div class="asset-row" data-cloud="azure">
+          <div class="asset-icon" style="background:rgba(0,212,255,.1);color:var(--zt-accent)">AAD</div>
+          <div class="asset-info"><div class="asset-name">svc-deploy-pipeline</div><div class="asset-meta">Azure AD · Service Principal · Overprivileged</div></div>
+          <div class="risk-pill risk-high">HIGH</div>
+        </div>
+        <div class="asset-row" data-cloud="gcp">
+          <div class="asset-icon" style="background:rgba(0,229,160,.1);color:var(--zt-green)">FN</div>
+          <div class="asset-info"><div class="asset-name">data-processor-v2</div><div class="asset-meta">GCP Cloud Function · us-central1 · Active</div></div>
+          <div class="risk-pill risk-low">LOW</div>
+        </div>
+        <div class="asset-row" data-cloud="aws">
+          <div class="asset-icon" style="background:rgba(255,69,96,.12);color:var(--zt-red)">SG</div>
+          <div class="asset-info"><div class="asset-name">sg-allow-all-inbound</div><div class="asset-meta">AWS · Security Group · 0.0.0.0/0 open ⚠</div></div>
+          <div class="risk-pill risk-critical">CRITICAL</div>
+        </div>
+        <div class="asset-row" data-cloud="azure">
+          <div class="asset-icon" style="background:rgba(255,176,32,.12);color:var(--zt-amber)">SQL</div>
+          <div class="asset-info"><div class="asset-name">azure-sql-analytics</div><div class="asset-meta">Azure SQL · eastus2 · TDE Disabled ⚠</div></div>
+          <div class="risk-pill risk-medium">MEDIUM</div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Asset Distribution</div>
+      <canvas id="assetChart" role="img" aria-label="Horizontal bar chart showing asset counts by type across clouds">Asset distribution by type and cloud provider.</canvas>
+    </div>
+  </div>
+</div>
+
+<!-- CONTROL VALIDATION PANEL -->
+<div id="panel-controls" class="panel">
+  <div class="kpi-row">
+    <div class="kpi green"><div class="kpi-label">Passing</div><div class="kpi-val" style="color:var(--zt-green)">1,204</div></div>
+    <div class="kpi red"><div class="kpi-label">Failing</div><div class="kpi-val" style="color:var(--zt-red)">87</div></div>
+    <div class="kpi amber"><div class="kpi-label">Warning</div><div class="kpi-val" style="color:var(--zt-amber)">63</div></div>
+    <div class="kpi purple"><div class="kpi-label">Partial</div><div class="kpi-val" style="color:var(--zt-purple)">25</div></div>
+    <div class="kpi blue"><div class="kpi-label">Last Validated</div><div class="kpi-val" style="font-size:16px">2m ago</div></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Real-Time Control Validation <span class="badge">API + AGENTLESS</span></div>
+    <div class="control-list" id="control-list">
+      <div class="control-item pass">
+        <div class="control-name">MFA enforced on all admin accounts</div>
+        <div class="control-cloud">AWS</div>
+        <div class="control-status status-pass">PASS</div>
+      </div>
+      <div class="control-item fail">
+        <div class="control-name">Encryption at rest on all S3 buckets</div>
+        <div class="control-cloud">AWS</div>
+        <div class="control-status status-fail">FAIL</div>
+      </div>
+      <div class="control-item pass">
+        <div class="control-name">Network segmentation — prod/dev isolation</div>
+        <div class="control-cloud">Azure</div>
+        <div class="control-status status-pass">PASS</div>
+      </div>
+      <div class="control-item warn">
+        <div class="control-name">Least privilege: service account permissions</div>
+        <div class="control-cloud">GCP</div>
+        <div class="control-status status-warn">WARN</div>
+      </div>
+      <div class="control-item fail">
+        <div class="control-name">No publicly exposed management ports (22/3389)</div>
+        <div class="control-cloud">AWS</div>
+        <div class="control-status status-fail">FAIL</div>
+      </div>
+      <div class="control-item partial">
+        <div class="control-name">Continuous authentication — session re-validation</div>
+        <div class="control-cloud">Azure</div>
+        <div class="control-status status-partial">PARTIAL</div>
+      </div>
+      <div class="control-item pass">
+        <div class="control-name">TLS 1.2+ enforced on all endpoints</div>
+        <div class="control-cloud">GCP</div>
+        <div class="control-status status-pass">PASS</div>
+      </div>
+      <div class="control-item fail">
+        <div class="control-name">Secrets not stored in environment variables</div>
+        <div class="control-cloud">AWS</div>
+        <div class="control-status status-fail">FAIL</div>
+      </div>
+      <div class="control-item warn">
+        <div class="control-name">Privileged identity management (PIM) active</div>
+        <div class="control-cloud">Azure</div>
+        <div class="control-status status-warn">WARN</div>
+      </div>
+      <div class="control-item pass">
+        <div class="control-name">Container images scanned before deploy</div>
+        <div class="control-cloud">GCP</div>
+        <div class="control-status status-pass">PASS</div>
+      </div>
+      <div class="control-item pass">
+        <div class="control-name">CloudTrail / Audit logging enabled</div>
+        <div class="control-cloud">AWS</div>
+        <div class="control-status status-pass">PASS</div>
+      </div>
+      <div class="control-item fail">
+        <div class="control-name">Database access via private endpoint only</div>
+        <div class="control-cloud">Azure</div>
+        <div class="control-status status-fail">FAIL</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ATTACK PATHS PANEL -->
+<div id="panel-paths" class="panel">
+  <div class="kpi-row">
+    <div class="kpi red"><div class="kpi-label">Critical Paths</div><div class="kpi-val" style="color:var(--zt-red)">3</div></div>
+    <div class="kpi amber"><div class="kpi-label">High Paths</div><div class="kpi-val" style="color:var(--zt-amber)">5</div></div>
+    <div class="kpi purple"><div class="kpi-label">Blast Radius</div><div class="kpi-val" style="color:var(--zt-purple)">847</div><div class="kpi-sub">Assets potentially affected</div></div>
+    <div class="kpi blue"><div class="kpi-label">Trust Violations</div><div class="kpi-val">12</div></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Attack Path & Trust Relationship Map</div>
+    <svg id="pathSvg" class="path-svg" viewBox="0 0 640 360" style="background:var(--zt-dim);border-radius:6px;width:100%;height:360px">
+      <defs>
+        <marker id="arr-red" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#ff4560"/>
+        </marker>
+        <marker id="arr-green" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#00e5a0"/>
+        </marker>
+        <marker id="arr-amber" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#ffb020"/>
+        </marker>
+      </defs>
+      <!-- External threat -->
+      <g class="trust-node" title="Internet / Attacker">
+        <rect x="10" y="150" width="80" height="36" rx="4" fill="rgba(255,69,96,.15)" stroke="#ff4560" stroke-width="1"/>
+        <text x="50" y="163" text-anchor="middle" fill="#ff4560" font-size="9" font-family="IBM Plex Mono">INTERNET</text>
+        <text x="50" y="176" text-anchor="middle" fill="#ff4560" font-size="8" font-family="IBM Plex Mono">ATTACKER</text>
+      </g>
+      <!-- Public S3 -->
+      <g class="trust-node">
+        <rect x="150" y="60" width="90" height="36" rx="4" fill="rgba(255,69,96,.15)" stroke="#ff4560" stroke-width="1.5" stroke-dasharray="4,2"/>
+        <text x="195" y="73" text-anchor="middle" fill="#ff4560" font-size="9" font-family="IBM Plex Mono">S3 BUCKET</text>
+        <text x="195" y="86" text-anchor="middle" fill="rgba(255,69,96,.7)" font-size="8" font-family="IBM Plex Mono">PUBLIC ACL</text>
+      </g>
+      <!-- Web Server -->
+      <g class="trust-node">
+        <rect x="150" y="150" width="90" height="36" rx="4" fill="rgba(255,176,32,.12)" stroke="#ffb020" stroke-width="1.5"/>
+        <text x="195" y="163" text-anchor="middle" fill="#ffb020" font-size="9" font-family="IBM Plex Mono">WEB SERVER</text>
+        <text x="195" y="176" text-anchor="middle" fill="rgba(255,176,32,.7)" font-size="8" font-family="IBM Plex Mono">PROD-04</text>
+      </g>
+      <!-- IAM Role -->
+      <g class="trust-node">
+        <rect x="150" y="240" width="90" height="36" rx="4" fill="rgba(255,176,32,.12)" stroke="#ffb020" stroke-width="1"/>
+        <text x="195" y="253" text-anchor="middle" fill="#ffb020" font-size="9" font-family="IBM Plex Mono">IAM ROLE</text>
+        <text x="195" y="266" text-anchor="middle" fill="rgba(255,176,32,.7)" font-size="8" font-family="IBM Plex Mono">OVERPRIVILEGED</text>
+      </g>
+      <!-- Internal DB -->
+      <g class="trust-node">
+        <rect x="310" y="120" width="90" height="36" rx="4" fill="rgba(0,229,160,.1)" stroke="#00e5a0" stroke-width="1"/>
+        <text x="355" y="133" text-anchor="middle" fill="#00e5a0" font-size="9" font-family="IBM Plex Mono">DB CLUSTER</text>
+        <text x="355" y="146" text-anchor="middle" fill="rgba(0,229,160,.7)" font-size="8" font-family="IBM Plex Mono">INTERNAL</text>
+      </g>
+      <!-- Secrets Manager -->
+      <g class="trust-node">
+        <rect x="310" y="210" width="90" height="36" rx="4" fill="rgba(0,212,255,.1)" stroke="#00d4ff" stroke-width="1"/>
+        <text x="355" y="223" text-anchor="middle" fill="#00d4ff" font-size="9" font-family="IBM Plex Mono">SECRETS MGR</text>
+        <text x="355" y="236" text-anchor="middle" fill="rgba(0,212,255,.7)" font-size="8" font-family="IBM Plex Mono">ENV VARS ⚠</text>
+      </g>
+      <!-- Critical crown jewel -->
+      <g class="trust-node">
+        <rect x="480" y="150" width="100" height="36" rx="4" fill="rgba(255,69,96,.2)" stroke="#ff4560" stroke-width="2"/>
+        <text x="530" y="163" text-anchor="middle" fill="#ff4560" font-size="9" font-family="IBM Plex Mono">DATA LAKE</text>
+        <text x="530" y="176" text-anchor="middle" fill="rgba(255,69,96,.8)" font-size="8" font-family="IBM Plex Mono">CROWN JEWEL</text>
+      </g>
+      <!-- Admin Console -->
+      <g class="trust-node">
+        <rect x="480" y="60" width="100" height="36" rx="4" fill="rgba(167,139,250,.15)" stroke="#a78bfa" stroke-width="1"/>
+        <text x="530" y="73" text-anchor="middle" fill="#a78bfa" font-size="9" font-family="IBM Plex Mono">ADMIN CONSOLE</text>
+        <text x="530" y="86" text-anchor="middle" fill="rgba(167,139,250,.7)" font-size="8" font-family="IBM Plex Mono">AZURE</text>
+      </g>
+
+      <!-- Attack path arrows (red) -->
+      <line x1="90" y1="168" x2="148" y2="78" stroke="#ff4560" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arr-red)"/>
+      <line x1="90" y1="168" x2="148" y2="168" stroke="#ff4560" stroke-width="2" marker-end="url(#arr-red)"/>
+      <line x1="240" y1="78" x2="308" y2="78" stroke="#ff4560" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arr-red)" transform="translate(0,60)"/>
+      <line x1="240" y1="168" x2="308" y2="138" stroke="#ff4560" stroke-width="2" marker-end="url(#arr-red)"/>
+      <line x1="240" y1="168" x2="308" y2="228" stroke="#ffb020" stroke-width="1.5" marker-end="url(#arr-amber)"/>
+      <line x1="400" y1="138" x2="478" y2="168" stroke="#ff4560" stroke-width="2" marker-end="url(#arr-red)"/>
+      <line x1="400" y1="228" x2="478" y2="168" stroke="#ff4560" stroke-width="1.5" marker-end="url(#arr-red)"/>
+      <line x1="240" y1="258" x2="308" y2="228" stroke="#ffb020" stroke-width="1" marker-end="url(#arr-amber)"/>
+      <line x1="400" y1="138" x2="478" y2="78" stroke="#00e5a0" stroke-width="1" marker-end="url(#arr-green)"/>
+
+      <!-- Legend -->
+      <rect x="12" y="310" width="100" height="42" rx="3" fill="rgba(0,0,0,.4)"/>
+      <line x1="18" y1="322" x2="50" y2="322" stroke="#ff4560" stroke-width="2" stroke-dasharray="4,2"/>
+      <text x="55" y="325" fill="#64748b" font-size="8" font-family="IBM Plex Mono">Attack path</text>
+      <line x1="18" y1="336" x2="50" y2="336" stroke="#ffb020" stroke-width="1.5"/>
+      <text x="55" y="339" fill="#64748b" font-size="8" font-family="IBM Plex Mono">Trust hop</text>
+      <line x1="18" y1="350" x2="50" y2="350" stroke="#00e5a0" stroke-width="1"/>
+      <text x="55" y="353" fill="#64748b" font-size="8" font-family="IBM Plex Mono">Legitimate</text>
+    </svg>
+  </div>
+  <div class="card">
+    <div class="card-title">Top Attack Path Details</div>
+    <div class="control-list">
+      <div class="control-item fail">
+        <div class="control-name" style="flex:1">
+          <div>Internet → Public S3 → IAM Exfiltration → Data Lake</div>
+          <div style="font-size:10px;color:var(--zt-muted);margin-top:2px">3 hops · CVSS 9.1 · Exploitable now</div>
+          <div style="margin-top:4px"><span class="tag">data-exfil</span><span class="tag">misconfigured-acl</span><span class="tag">iam-escalation</span></div>
+        </div>
+        <button class="action-btn danger" onclick="sendPrompt('Explain how to remediate the attack path: Internet to Public S3 to IAM escalation to Data Lake in our zero trust environment')">Remediate ↗</button>
+      </div>
+      <div class="control-item fail">
+        <div class="control-name" style="flex:1">
+          <div>Compromised Workload → Lateral Movement → DB Cluster</div>
+          <div style="font-size:10px;color:var(--zt-muted);margin-top:2px">2 hops · CVSS 8.4 · Network segmentation gap</div>
+          <div style="margin-top:4px"><span class="tag">lateral-movement</span><span class="tag">insufficient-segmentation</span></div>
+        </div>
+        <button class="action-btn danger" onclick="sendPrompt('How do I stop lateral movement attacks in a multi-cloud zero trust environment?')">Remediate ↗</button>
+      </div>
+      <div class="control-item warn">
+        <div class="control-name" style="flex:1">
+          <div>Overprivileged SvcAcct → Secrets Mgr → Admin Console</div>
+          <div style="font-size:10px;color:var(--zt-muted);margin-top:2px">2 hops · CVSS 7.2 · Privilege chaining risk</div>
+          <div style="margin-top:4px"><span class="tag">privilege-escalation</span><span class="tag">secrets-exposure</span></div>
+        </div>
+        <button class="action-btn" onclick="sendPrompt('What is privilege chaining in zero trust and how do I prevent it?')">Analyze ↗</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MATURITY PANEL -->
+<div id="panel-maturity" class="panel">
+  <div class="row2">
+    <div class="card">
+      <div class="card-title">Zero Trust Maturity Score</div>
+      <div style="display:flex;align-items:center;gap:24px">
+        <div class="score-ring">
+          <div class="ring-wrap">
+            <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="42" fill="none" stroke="rgba(0,212,255,.1)" stroke-width="10"/><circle cx="50" cy="50" r="42" fill="none" stroke="#00d4ff" stroke-width="10" stroke-dasharray="176 264" stroke-linecap="round"/></svg>
+            <div class="ring-center"><div class="ring-num">68</div><div class="ring-sub">/ 100</div></div>
+          </div>
+          <div style="font-size:10px;color:var(--zt-muted);text-align:center;margin-top:6px;letter-spacing:1px">LEVEL 3 — DEFINED</div>
+        </div>
+        <div style="flex:1">
+          <div style="font-size:11px;color:var(--zt-muted);margin-bottom:8px">NIST ZTA ALIGNMENT</div>
+          <div class="maturity-section">
+            <div class="maturity-item">
+              <div class="maturity-header"><span class="maturity-label">Identity</span><span class="maturity-score" style="color:var(--zt-green)">88/100</span></div>
+              <div class="maturity-bar"><div class="maturity-fill" style="width:88%;background:var(--zt-green)"></div></div>
+            </div>
+            <div class="maturity-item">
+              <div class="maturity-header"><span class="maturity-label">Devices</span><span class="maturity-score" style="color:var(--zt-red)">52/100</span></div>
+              <div class="maturity-bar"><div class="maturity-fill" style="width:52%;background:var(--zt-red)"></div></div>
+            </div>
+            <div class="maturity-item">
+              <div class="maturity-header"><span class="maturity-label">Networks</span><span class="maturity-score" style="color:var(--zt-accent)">74/100</span></div>
+              <div class="maturity-bar"><div class="maturity-fill" style="width:74%;background:var(--zt-accent)"></div></div>
+            </div>
+            <div class="maturity-item">
+              <div class="maturity-header"><span class="maturity-label">Applications</span><span class="maturity-score" style="color:var(--zt-amber)">66/100</span></div>
+              <div class="maturity-bar"><div class="maturity-fill" style="width:66%;background:var(--zt-amber)"></div></div>
+            </div>
+            <div class="maturity-item">
+              <div class="maturity-header"><span class="maturity-label">Data</span><span class="maturity-score" style="color:var(--zt-amber)">61/100</span></div>
+              <div class="maturity-bar"><div class="maturity-fill" style="width:61%;background:var(--zt-amber)"></div></div>
+            </div>
+            <div class="maturity-item">
+              <div class="maturity-header"><span class="maturity-label">Automation</span><span class="maturity-score" style="color:var(--zt-purple)">70/100</span></div>
+              <div class="maturity-bar"><div class="maturity-fill" style="width:70%;background:var(--zt-purple)"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Maturity Trend <span class="badge">90 DAYS</span></div>
+      <div style="height:200px;position:relative"><canvas id="maturityChart" role="img" aria-label="Line chart showing ZT maturity score trend over 90 days, rising from 54 to 68">ZT maturity score improved from 54 to 68 over 90 days.</canvas></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Maturity Level Roadmap</div>
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px">
+      <div style="padding:12px;border-radius:6px;background:var(--zt-dim);border:1px solid var(--zt-border);opacity:.5">
+        <div style="font-size:10px;color:var(--zt-muted);letter-spacing:1px">LEVEL 1</div>
+        <div style="font-size:13px;font-weight:600;margin:4px 0;color:var(--zt-text)">Traditional</div>
+        <div style="font-size:10px;color:var(--zt-muted)">Score: 0–30</div>
+        <div style="font-size:10px;color:var(--zt-green);margin-top:4px">✓ Completed</div>
+      </div>
+      <div style="padding:12px;border-radius:6px;background:var(--zt-dim);border:1px solid var(--zt-border);opacity:.5">
+        <div style="font-size:10px;color:var(--zt-muted);letter-spacing:1px">LEVEL 2</div>
+        <div style="font-size:13px;font-weight:600;margin:4px 0;color:var(--zt-text)">Initial</div>
+        <div style="font-size:10px;color:var(--zt-muted)">Score: 31–55</div>
+        <div style="font-size:10px;color:var(--zt-green);margin-top:4px">✓ Completed</div>
+      </div>
+      <div style="padding:12px;border-radius:6px;background:rgba(0,212,255,.08);border:2px solid var(--zt-accent)">
+        <div style="font-size:10px;color:var(--zt-accent);letter-spacing:1px">LEVEL 3 ←</div>
+        <div style="font-size:13px;font-weight:600;margin:4px 0;color:var(--zt-accent)">Defined</div>
+        <div style="font-size:10px;color:var(--zt-muted)">Score: 56–70</div>
+        <div style="font-size:10px;color:var(--zt-accent);margin-top:4px">● Currently at 68</div>
+      </div>
+      <div style="padding:12px;border-radius:6px;background:var(--zt-dim);border:1px solid var(--zt-border)">
+        <div style="font-size:10px;color:var(--zt-muted);letter-spacing:1px">LEVEL 4</div>
+        <div style="font-size:13px;font-weight:600;margin:4px 0;color:var(--zt-text)">Advanced</div>
+        <div style="font-size:10px;color:var(--zt-muted)">Score: 71–85</div>
+        <div style="font-size:10px;color:var(--zt-muted);margin-top:4px">→ Gap: 3 pts</div>
+      </div>
+      <div style="padding:12px;border-radius:6px;background:var(--zt-dim);border:1px solid var(--zt-border)">
+        <div style="font-size:10px;color:var(--zt-muted);letter-spacing:1px">LEVEL 5</div>
+        <div style="font-size:13px;font-weight:600;margin:4px 0;color:var(--zt-text)">Optimal</div>
+        <div style="font-size:10px;color:var(--zt-muted)">Score: 86–100</div>
+        <div style="font-size:10px;color:var(--zt-muted);margin-top:4px">→ Gap: 18 pts</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ANOMALIES PANEL -->
+<div id="panel-anomalies" class="panel">
+  <div class="kpi-row">
+    <div class="kpi red"><div class="kpi-label">Critical Anomalies</div><div class="kpi-val" style="color:var(--zt-red)">3</div><div class="kpi-sub">Active right now</div></div>
+    <div class="kpi amber"><div class="kpi-label">High Severity</div><div class="kpi-val" style="color:var(--zt-amber)">11</div><div class="kpi-sub">Last 24 hours</div></div>
+    <div class="kpi purple"><div class="kpi-label">Behavioral Baselines</div><div class="kpi-val" style="color:var(--zt-purple)">2,847</div><div class="kpi-sub">Active profiles</div></div>
+    <div class="kpi blue"><div class="kpi-label">ML Model Accuracy</div><div class="kpi-val">97.3%</div></div>
+  </div>
+  <div class="row2">
+    <div class="card">
+      <div class="card-title">Anomaly Detection Feed <span class="badge">ML-POWERED</span></div>
+      <div class="anomaly-feed scrollbar" style="max-height:320px">
+        <div class="anomaly-item critical">
+          <div class="anomaly-body">
+            <div class="anomaly-title">Impossible travel detected</div>
+            <div class="anomaly-detail">admin@corp.com: New York → Singapore in 4 min · Identity anomaly · Confidence 99.1%</div>
+            <div style="margin-top:4px"><span class="tag">identity</span><span class="tag">geolocation</span></div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+            <div class="anomaly-time">2m ago</div>
+            <button class="action-btn danger" style="font-size:9px;padding:3px 8px">Block</button>
+          </div>
+        </div>
+        <div class="anomaly-item critical">
+          <div class="anomaly-body">
+            <div class="anomaly-title">Mass data egress — S3</div>
+            <div class="anomaly-detail">12.4 GB exfiltrated in 8 min from corp-data-lake · 47× baseline · AWS us-east-1</div>
+            <div style="margin-top:4px"><span class="tag">data-exfil</span><span class="tag">volume-spike</span></div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+            <div class="anomaly-time">7m ago</div>
+            <button class="action-btn danger" style="font-size:9px;padding:3px 8px">Block</button>
+          </div>
+        </div>
+        <div class="anomaly-item critical">
+          <div class="anomaly-body">
+            <div class="anomaly-title">Privilege escalation chain</div>
+            <div class="anomaly-detail">svc-deploy → assumed AdminRole → created new IAM user · 3-step escalation</div>
+            <div style="margin-top:4px"><span class="tag">privilege-esc</span><span class="tag">iam</span></div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+            <div class="anomaly-time">11m ago</div>
+            <button class="action-btn danger" style="font-size:9px;padding:3px 8px">Revoke</button>
+          </div>
+        </div>
+        <div class="anomaly-item high">
+          <div class="anomaly-body">
+            <div class="anomaly-title">Lateral movement — east-west</div>
+            <div class="anomaly-detail">3 internal hops detected: workload-07 → db-proxy → admin-net</div>
+            <div style="margin-top:4px"><span class="tag">lateral-movement</span><span class="tag">network</span></div>
+          </div>
+          <div class="anomaly-time">34m ago</div>
+        </div>
+        <div class="anomaly-item high">
+          <div class="anomaly-body">
+            <div class="anomaly-title">Off-hours API access pattern</div>
+            <div class="anomaly-detail">svc-analytics calling production APIs at 03:14 UTC — 0% baseline probability</div>
+            <div style="margin-top:4px"><span class="tag">time-anomaly</span><span class="tag">api</span></div>
+          </div>
+          <div class="anomaly-time">1h ago</div>
+        </div>
+        <div class="anomaly-item medium">
+          <div class="anomaly-body">
+            <div class="anomaly-title">Unusual process spawn in container</div>
+            <div class="anomaly-detail">cmd.exe spawned inside linux container fn:data-processor · GCP</div>
+            <div style="margin-top:4px"><span class="tag">container</span><span class="tag">process-anomaly</span></div>
+          </div>
+          <div class="anomaly-time">2h ago</div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Anomaly Volume — 7 Days</div>
+      <div style="height:160px;position:relative;margin-bottom:16px"><canvas id="anomalyChart" role="img" aria-label="Bar chart of anomaly counts over last 7 days">Daily anomaly counts over last 7 days.</canvas></div>
+      <div class="card-title" style="margin-top:8px">Detection Categories</div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px"><span>Identity & Access</span><span style="color:var(--zt-red)">34%</span></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px"><span>Network Behavior</span><span style="color:var(--zt-amber)">28%</span></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px"><span>Data Movement</span><span style="color:var(--zt-purple)">21%</span></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px"><span>Workload Anomalies</span><span style="color:var(--zt-accent)">12%</span></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px"><span>API Abuse</span><span style="color:var(--zt-green)">5%</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- POLICY ENGINE PANEL -->
+<div id="panel-policies" class="panel">
+  <div class="kpi-row">
+    <div class="kpi green"><div class="kpi-label">Active Policies</div><div class="kpi-val" style="color:var(--zt-green)">247</div></div>
+    <div class="kpi amber"><div class="kpi-label">Violations Today</div><div class="kpi-val" style="color:var(--zt-amber)">18</div></div>
+    <div class="kpi blue"><div class="kpi-label">Frameworks</div><div class="kpi-val">6</div><div class="kpi-sub">NIST·SOC2·ISO27001+</div></div>
+    <div class="kpi purple"><div class="kpi-label">Auto-Remediated</div><div class="kpi-val" style="color:var(--zt-purple)">142</div><div class="kpi-sub">This week</div></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Policy Compliance Matrix</div>
+    <table class="policy-table">
+      <thead>
+        <tr>
+          <th>Policy Name</th>
+          <th>Framework</th>
+          <th>Cloud</th>
+          <th>Status</th>
+          <th>Last Check</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>No public S3 buckets</td><td style="color:var(--zt-muted)">CIS AWS 2.1</td><td style="color:var(--zt-muted)">AWS</td><td class="status-fail">FAIL</td><td style="color:var(--zt-muted)">2m ago</td><td><button class="action-btn danger" onclick="sendPrompt('Generate a Terraform fix to block all public S3 bucket ACLs')">Fix ↗</button></td></tr>
+        <tr><td>MFA on all IAM users</td><td style="color:var(--zt-muted)">NIST AC-2</td><td style="color:var(--zt-muted)">AWS</td><td class="status-pass">PASS</td><td style="color:var(--zt-muted)">2m ago</td><td><button class="action-btn">View</button></td></tr>
+        <tr><td>Encrypt all data at rest</td><td style="color:var(--zt-muted)">ISO 27001</td><td style="color:var(--zt-muted)">Azure</td><td class="status-warn">WARN</td><td style="color:var(--zt-muted)">2m ago</td><td><button class="action-btn" onclick="sendPrompt('How to enable encryption at rest on all Azure SQL databases?')">Fix ↗</button></td></tr>
+        <tr><td>Least privilege access</td><td style="color:var(--zt-muted)">NIST AC-6</td><td style="color:var(--zt-muted)">GCP</td><td class="status-partial">PARTIAL</td><td style="color:var(--zt-muted)">5m ago</td><td><button class="action-btn">Review</button></td></tr>
+        <tr><td>Network micro-segmentation</td><td style="color:var(--zt-muted)">ZTA SP 800-207</td><td style="color:var(--zt-muted)">All</td><td class="status-warn">WARN</td><td style="color:var(--zt-muted)">5m ago</td><td><button class="action-btn" onclick="sendPrompt('Explain micro-segmentation best practices for multi-cloud zero trust')">Analyze ↗</button></td></tr>
+        <tr><td>No hard-coded secrets</td><td style="color:var(--zt-muted)">SOC 2 CC6</td><td style="color:var(--zt-muted)">AWS</td><td class="status-fail">FAIL</td><td style="color:var(--zt-muted)">2m ago</td><td><button class="action-btn danger" onclick="sendPrompt('Best practice for rotating and managing secrets in AWS Lambda functions')">Fix ↗</button></td></tr>
+        <tr><td>Audit logging enabled</td><td style="color:var(--zt-muted)">SOC 2 CC7</td><td style="color:var(--zt-muted)">All</td><td class="status-pass">PASS</td><td style="color:var(--zt-muted)">2m ago</td><td><button class="action-btn">View</button></td></tr>
+        <tr><td>JIT access for privileged ops</td><td style="color:var(--zt-muted)">NIST AC-2(7)</td><td style="color:var(--zt-muted)">Azure</td><td class="status-partial">PARTIAL</td><td style="color:var(--zt-muted)">8m ago</td><td><button class="action-btn" onclick="sendPrompt('How to implement JIT just-in-time privileged access in Azure PIM?')">Configure ↗</button></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- REMEDIATION PANEL -->
+<div id="panel-remediation" class="panel">
+  <div class="kpi-row">
+    <div class="kpi red"><div class="kpi-label">Open Items</div><div class="kpi-val" style="color:var(--zt-red)">34</div></div>
+    <div class="kpi green"><div class="kpi-label">Resolved This Week</div><div class="kpi-val" style="color:var(--zt-green)">47</div></div>
+    <div class="kpi amber"><div class="kpi-label">MTTR</div><div class="kpi-val" style="color:var(--zt-amber)">4.2h</div><div class="kpi-sub">Mean time to remediate</div></div>
+    <div class="kpi purple"><div class="kpi-label">Auto-Fixable</div><div class="kpi-val" style="color:var(--zt-purple)">19</div><div class="kpi-sub">One-click remediations</div></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Prioritized Remediation Queue <span class="badge">AI-RANKED</span></div>
+    <div class="remediation-item">
+      <div class="rem-priority" style="background:rgba(255,69,96,.2);color:var(--zt-red)">P1</div>
+      <div class="rem-body">
+        <div class="rem-title">Remove public ACL from corp-data-lake-prod S3 bucket</div>
+        <div class="rem-meta">AWS us-east-1 · Risk: CRITICAL · Effort: Low · Est: 5 min</div>
+        <div class="rem-actions">
+          <button class="action-btn danger" onclick="sendPrompt('Generate an AWS CLI command to make the S3 bucket corp-data-lake-prod private and remove all public ACLs')">Generate Fix ↗</button>
+          <button class="action-btn">Assign</button>
+          <button class="action-btn">Suppress</button>
+        </div>
+      </div>
+    </div>
+    <div class="remediation-item">
+      <div class="rem-priority" style="background:rgba(255,69,96,.2);color:var(--zt-red)">P1</div>
+      <div class="rem-body">
+        <div class="rem-title">Close SSH port 22 on sg-allow-all-inbound security group</div>
+        <div class="rem-meta">AWS · Risk: CRITICAL · Effort: Low · Est: 2 min</div>
+        <div class="rem-actions">
+          <button class="action-btn danger" onclick="sendPrompt('Write Terraform code to remove 0.0.0.0/0 inbound rules from a security group and replace with specific CIDR ranges')">Generate Fix ↗</button>
+          <button class="action-btn">Assign</button>
+        </div>
+      </div>
+    </div>
+    <div class="remediation-item">
+      <div class="rem-priority" style="background:rgba(255,176,32,.15);color:var(--zt-amber)">P2</div>
+      <div class="rem-body">
+        <div class="rem-title">Rotate svc-deploy service account credentials and reduce permissions</div>
+        <div class="rem-meta">Azure · Risk: HIGH · Effort: Medium · Est: 30 min</div>
+        <div class="rem-actions">
+          <button class="action-btn" onclick="sendPrompt('How do I implement least-privilege service principal permissions in Azure Active Directory?')">Analyze ↗</button>
+          <button class="action-btn">Assign</button>
+        </div>
+      </div>
+    </div>
+    <div class="remediation-item">
+      <div class="rem-priority" style="background:rgba(255,176,32,.15);color:var(--zt-amber)">P2</div>
+      <div class="rem-body">
+        <div class="rem-title">Enable TDE on azure-sql-analytics database</div>
+        <div class="rem-meta">Azure eastus2 · Risk: HIGH · Effort: Low · Est: 10 min</div>
+        <div class="rem-actions">
+          <button class="action-btn" onclick="sendPrompt('Generate Azure CLI commands to enable Transparent Data Encryption on Azure SQL Database')">Generate Fix ↗</button>
+          <button class="action-btn">Assign</button>
+        </div>
+      </div>
+    </div>
+    <div class="remediation-item">
+      <div class="rem-priority" style="background:rgba(167,139,250,.15);color:var(--zt-purple)">P3</div>
+      <div class="rem-body">
+        <div class="rem-title">Migrate Lambda secrets from env vars to Secrets Manager</div>
+        <div class="rem-meta">AWS · Risk: HIGH · Effort: Medium · Est: 2h</div>
+        <div class="rem-actions">
+          <button class="action-btn" onclick="sendPrompt('Write Python code to read secrets from AWS Secrets Manager instead of environment variables in Lambda')">Code Fix ↗</button>
+          <button class="action-btn">Assign</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- AUDIT LOG PANEL -->
+<div id="panel-audit" class="panel">
+  <div class="kpi-row">
+    <div class="kpi blue"><div class="kpi-label">Events Today</div><div class="kpi-val">14,872</div></div>
+    <div class="kpi green"><div class="kpi-label">Scans Completed</div><div class="kpi-val" style="color:var(--zt-green)">847</div></div>
+    <div class="kpi amber"><div class="kpi-label">Policy Changes</div><div class="kpi-val" style="color:var(--zt-amber)">12</div></div>
+    <div class="kpi purple"><div class="kpi-label">Retention</div><div class="kpi-val" style="color:var(--zt-purple)">365d</div></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Audit Timeline <span class="badge">IMMUTABLE LOG</span></div>
+    <div style="padding:4px 0">
+      <div class="timeline-item">
+        <div class="tl-dot" style="border-color:var(--zt-red);color:var(--zt-red)">!</div>
+        <div class="tl-body">
+          <div class="tl-title">Critical: Impossible travel alert triggered for admin@corp.com</div>
+          <div class="tl-meta">2m ago · Identity · System · Correlation ID: c8f2a1e9</div>
+        </div>
+      </div>
+      <div class="timeline-item">
+        <div class="tl-dot" style="border-color:var(--zt-amber);color:var(--zt-amber)">⟳</div>
+        <div class="tl-body">
+          <div class="tl-title">Continuous scan completed — 4,219 assets validated</div>
+          <div class="tl-meta">4m ago · Scanner · Auto · Scan ID: sc-20240426-0847</div>
+        </div>
+      </div>
+      <div class="timeline-item">
+        <div class="tl-dot" style="border-color:var(--zt-red);color:var(--zt-red)">✗</div>
+        <div class="tl-body">
+          <div class="tl-title">Policy violation: Public S3 bucket corp-data-lake-prod detected</div>
+          <div class="tl-meta">4m ago · Policy Engine · AWS · Rule: no-public-s3</div>
+        </div>
+      </div>
+      <div class="timeline-item">
+        <div class="tl-dot" style="border-color:var(--zt-green);color:var(--zt-green)">✓</div>
+        <div class="tl-body">
+          <div class="tl-title">Control validation: MFA enforcement — 100% compliant</div>
+          <div class="tl-meta">5m ago · Controls · AWS IAM · All 847 admin accounts checked</div>
+        </div>
+      </div>
+      <div class="timeline-item">
+        <div class="tl-dot" style="border-color:var(--zt-purple);color:var(--zt-purple)">⚙</div>
+        <div class="tl-body">
+          <div class="tl-title">Maturity score recalculated: 67 → 68 (+1)</div>
+          <div class="tl-meta">12m ago · Scoring Engine · All clouds · Weekly recalc</div>
+        </div>
+      </div>
+      <div class="timeline-item">
+        <div class="tl-dot" style="border-color:var(--zt-amber);color:var(--zt-amber)">!</div>
+        <div class="tl-body">
+          <div class="tl-title">New shadow asset discovered: untagged EC2 i-0abc123def in prod VPC</div>
+          <div class="tl-meta">18m ago · Discovery · AWS us-east-1 · Added to inventory</div>
+        </div>
+      </div>
+      <div class="timeline-item">
+        <div class="tl-dot" style="border-color:var(--zt-green);color:var(--zt-green)">✓</div>
+        <div class="tl-body">
+          <div class="tl-title">Remediation completed: SSH port closed on 14 security groups</div>
+          <div class="tl-meta">32m ago · Remediation · AWS · By: j.smith@corp.com</div>
+        </div>
+      </div>
+      <div class="timeline-item">
+        <div class="tl-dot" style="border-color:var(--zt-accent);color:var(--zt-accent)">↑</div>
+        <div class="tl-body">
+          <div class="tl-title">GCP connector authenticated — agentless scan initiated</div>
+          <div class="tl-meta">1h ago · API Connector · GCP · Token refreshed</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+function showPanel(id, btn) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-' + id).classList.add('active');
+  btn.classList.add('active');
+  if (id === 'overview' && !window._overviewInit) { initOverviewCharts(); window._overviewInit = true; }
+  if (id === 'assets' && !window._assetInit) { initAssetChart(); window._assetInit = true; }
+  if (id === 'maturity' && !window._matInit) { initMaturityChart(); window._matInit = true; }
+  if (id === 'anomalies' && !window._anomInit) { initAnomalyChart(); window._anomInit = true; }
+}
+
+function triggerScan() {
+  const label = document.getElementById('scan-label');
+  label.textContent = '● SCANNING...';
+  let i = 0;
+  const msgs = ['● SCANNING...', '● VALIDATING...', '● ANALYZING...', '⟳ RUN SCAN'];
+  const t = setInterval(() => {
+    i++;
+    if (i >= msgs.length) { clearInterval(t); }
+    label.textContent = msgs[Math.min(i, msgs.length-1)];
+  }, 1200);
+}
+
+function filterCloud(btn, cloud) {
+  document.querySelectorAll('.cloud-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.asset-row').forEach(row => {
+    row.style.display = (cloud === 'all' || row.dataset.cloud === cloud) ? 'flex' : 'none';
+  });
+}
+
+const chartDefaults = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: { legend: { display: false } }
+};
+
+function initOverviewCharts() {
+  const labels = Array.from({length:30}, (_,i) => `Day ${i+1}`);
+  new Chart(document.getElementById('overviewChart'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label:'Identity', data: labels.map((_,i)=>78+Math.sin(i*.3)*5+i*.3), fill:true, backgroundColor:'rgba(0,229,160,.08)', borderColor:'#00e5a0', borderWidth:1.5, pointRadius:0, tension:.4 },
+        { label:'Network', data: labels.map((_,i)=>60+Math.sin(i*.4+1)*6+i*.4), fill:true, backgroundColor:'rgba(0,212,255,.06)', borderColor:'#00d4ff', borderWidth:1.5, pointRadius:0, tension:.4 },
+        { label:'Data', data: labels.map((_,i)=>45+Math.sin(i*.5+2)*7+i*.5), fill:true, backgroundColor:'rgba(167,139,250,.06)', borderColor:'#a78bfa', borderWidth:1.5, pointRadius:0, tension:.4 },
+      ]
+    },
+    options: { ...chartDefaults, scales: { x: { display:false }, y: { min:40, max:100, grid:{color:'rgba(30,45,74,.5)'}, ticks:{color:'#64748b',font:{size:10}} } }, plugins: { legend:{display:false} } }
+  });
+
+  new Chart(document.getElementById('riskDonut'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Critical','High','Medium','Low'],
+      datasets: [{ data:[23,89,234,511], backgroundColor:['#ff4560','#ffb020','#00d4ff','#00e5a0'], borderWidth:0, hoverOffset:4 }]
+    },
+    options: { ...chartDefaults, cutout:'70%', plugins:{ legend:{display:false}, tooltip:{callbacks:{label:ctx=>` ${ctx.label}: ${ctx.parsed}`}} } }
+  });
+}
+
+function initAssetChart() {
+  new Chart(document.getElementById('assetChart'), {
+    type: 'bar',
+    data: {
+      labels: ['Compute','Network','Data','Identity','Unmanaged'],
+      datasets: [
+        { label:'AWS', data:[847,220,180,590,87], backgroundColor:'rgba(255,176,32,.7)' },
+        { label:'Azure', data:[612,198,124,420,52], backgroundColor:'rgba(0,212,255,.6)' },
+        { label:'GCP', data:[388,194,85,194,28], backgroundColor:'rgba(0,229,160,.6)' },
+      ]
+    },
+    options: { ...chartDefaults, indexAxis:'y', scales: { x:{stacked:true,grid:{color:'rgba(30,45,74,.5)'},ticks:{color:'#64748b',font:{size:9}}}, y:{stacked:true,grid:{display:false},ticks:{color:'#64748b',font:{size:10}}} }, plugins:{legend:{display:false}} }
+  });
+}
+
+function initMaturityChart() {
+  const baseScores = [54,55,55,57,56,58,59,61,60,62,63,63,64,65,64,66,66,67,66,68,67,68,68,68,67,68,68,69,68,68];
+  new Chart(document.getElementById('maturityChart'), {
+    type: 'line',
+    data: {
+      labels: baseScores.map((_,i)=>`D${i+1}`),
+      datasets: [{ data:baseScores, borderColor:'#a78bfa', borderWidth:2, pointRadius:0, tension:.4, fill:true, backgroundColor:'rgba(167,139,250,.08)' }]
+    },
+    options: { ...chartDefaults, scales:{ x:{display:false}, y:{min:45,max:80,grid:{color:'rgba(30,45,74,.5)'},ticks:{color:'#64748b',font:{size:10}}} }, plugins:{legend:{display:false}} }
+  });
+}
+
+function initAnomalyChart() {
+  new Chart(document.getElementById('anomalyChart'), {
+    type: 'bar',
+    data: {
+      labels: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
+      datasets: [
+        { label:'Critical', data:[2,4,1,3,5,2,3], backgroundColor:'rgba(255,69,96,.7)' },
+        { label:'High', data:[8,11,6,9,13,7,11], backgroundColor:'rgba(255,176,32,.6)' },
+        { label:'Medium', data:[14,18,12,16,21,10,16], backgroundColor:'rgba(0,212,255,.4)' },
+      ]
+    },
+    options: { ...chartDefaults, scales:{ x:{stacked:true,grid:{display:false},ticks:{color:'#64748b',font:{size:10}}}, y:{stacked:true,grid:{color:'rgba(30,45,74,.5)'},ticks:{color:'#64748b',font:{size:10}}} }, plugins:{legend:{display:false}} }
+  });
+}
+
+setTimeout(initOverviewCharts, 100);
+window._overviewInit = true;
+
+let assetCount = 4219;
+setInterval(() => {
+  if (Math.random() > .7) {
+    assetCount += Math.floor(Math.random() * 3);
+    const el = document.getElementById('kpi-assets');
+    if (el) el.textContent = assetCount.toLocaleString();
+  }
+}, 3000);
+</script>
